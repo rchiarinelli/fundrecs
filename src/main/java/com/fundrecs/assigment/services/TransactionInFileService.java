@@ -5,7 +5,6 @@ package com.fundrecs.assigment.services;
 
 import java.io.IOException;
 import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
@@ -23,6 +22,7 @@ import com.fundrecs.assigment.domain.Transaction;
 import com.fundrecs.assigment.domain.TransactionType;
 import com.fundrecs.assigment.store.TransactionStore;
 import com.fundrecs.assigment.utils.DateUtils;
+import com.fundrecs.assigment.utils.SimpleEventLogs;
 import com.google.common.collect.Lists;
 import com.google.gson.GsonBuilder;
 import com.google.gson.JsonArray;
@@ -91,6 +91,8 @@ public class TransactionInFileService implements TransactionService {
 				double elementAmount = Double.valueOf(existingElement.getAsJsonObject().get("amount").getAsString()) + repeated.getAmount();
 				existingElement.getAsJsonObject().remove("amount");
 				existingElement.getAsJsonObject().addProperty("amount", Double.toString(elementAmount));
+				
+				SimpleEventLogs.logEvent("updated trasaction - " + existingElement);
 				
 				updatedTransactions.add(Transaction.fromJson(existingElement));
 			}
