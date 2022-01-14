@@ -1,1 +1,1 @@
-web: java -jar -Dspring.profiles.active=production target/rchiarinelli-0.0.1-SNAPSHOT.jar
+web: java -jar -Dserver.port=$PORT $JAVA_OPTS -Dspring.profiles.active=production target/rchiarinelli-0.0.1-SNAPSHOT.jar
