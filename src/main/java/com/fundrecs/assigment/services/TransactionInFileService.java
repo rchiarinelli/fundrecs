@@ -48,6 +48,9 @@ public class TransactionInFileService implements TransactionService {
 	
 	@Override
 	public Optional<List<Transaction>> register(final List<Transaction> transactions) {
+		
+		List<Transaction> updatedTransactions = new ArrayList<>();
+		
 		try {
 			
 			List<JsonElement> transactionsStore = Lists.newArrayList(store.loadJsonFromFile().getAsJsonArray().iterator());
@@ -55,8 +58,8 @@ public class TransactionInFileService implements TransactionService {
 			Collections.sort(transactionsStore, new Comparator<JsonElement>() {
 				@Override
 				public int compare(JsonElement jsonElement, JsonElement otherJsonElement) {
-					final LocalDate dateJsonElement = LocalDate.parse(jsonElement.getAsJsonObject().get("date").getAsString(), DateTimeFormatter.ofPattern("dd-MM-yyyy"));
-					final LocalDate dateOtherJsonElement = LocalDate.parse(otherJsonElement.getAsJsonObject().get("date").getAsString(), DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+					final LocalDate dateJsonElement = DateUtils.parseDate(jsonElement.getAsJsonObject().get("date").getAsString());
+					final LocalDate dateOtherJsonElement = DateUtils.parseDate(otherJsonElement.getAsJsonObject().get("date").getAsString());
 					return dateJsonElement.compareTo(dateOtherJsonElement);
 				}
 			});
@@ -80,7 +83,7 @@ public class TransactionInFileService implements TransactionService {
 			for (final Transaction repeated : repeatedItensFromInput) {
 				final JsonElement existingElement = existingFromStore.stream()
 						.filter(jsonElement -> jsonElement.getAsJsonObject().get("date").getAsString()
-								.equals(repeated.getDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")))
+								.equals(DateUtils.formatDate(repeated.getDate()))
 								&& jsonElement.getAsJsonObject().get("type").getAsString()
 										.equals(repeated.getType().name()))
 						.findFirst().get();
@@ -88,14 +91,18 @@ public class TransactionInFileService implements TransactionService {
 				double elementAmount = Double.valueOf(existingElement.getAsJsonObject().get("amount").getAsString()) + repeated.getAmount();
 				existingElement.getAsJsonObject().remove("amount");
 				existingElement.getAsJsonObject().addProperty("amount", Double.toString(elementAmount));
+				
+				updatedTransactions.add(Transaction.fromJson(existingElement));
 			}
 			
 			for (final Transaction newTransaction : newTransactions) {
 				final JsonObject transactionJson = new JsonObject();
 				transactionJson.addProperty("amount", Double.toString(newTransaction.getAmount()));
 				transactionJson.addProperty("type", newTransaction.getType().name());
-				transactionJson.addProperty("date", newTransaction.getDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")));
+				transactionJson.addProperty("date", DateUtils.formatDate(newTransaction.getDate()));
 				transactionsStore.add(transactionJson);
+				
+				updatedTransactions.add(newTransaction);
 			}
 			
 			store.persist(new GsonBuilder().create().toJsonTree(transactionsStore));
@@ -103,7 +110,7 @@ public class TransactionInFileService implements TransactionService {
 			log.error(e);
 			return Optional.empty();
 		}
-		return Optional.of(transactions);
+		return Optional.of(updatedTransactions);
 	}
 	
 	@Override
@@ -113,12 +120,12 @@ public class TransactionInFileService implements TransactionService {
 			final JsonArray transactionsStore = store.loadJsonFromFile().getAsJsonArray();
 			
 			final JsonElement jsonElement = Lists.newArrayList(transactionsStore.iterator()).stream().collect(Collectors.toList()).stream().filter(txJson -> 
-				txJson.getAsJsonObject().get("date").getAsString().equals(date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy")))
+				txJson.getAsJsonObject().get("date").getAsString().equals(DateUtils.formatDate(date))
 				&& txJson.getAsJsonObject().get("type").getAsString().equals(type.name())).findFirst().orElse(null);	
 			
 			if (jsonElement != null) {
 				final double amount = Double.valueOf(jsonElement.getAsJsonObject().get("amount").getAsString());
-				final LocalDate txDate =  LocalDate.parse(jsonElement.getAsJsonObject().get("date").getAsString(),DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+				final LocalDate txDate =  DateUtils.parseDate(jsonElement.getAsJsonObject().get("date").getAsString());
 				final TransactionType txType = TransactionType.valueOf(jsonElement.getAsJsonObject().get("type").getAsString());
 				
 				transaction = Transaction.builder().amount(amount).date(txDate).type(txType).build();
@@ -137,11 +144,11 @@ public class TransactionInFileService implements TransactionService {
 			final JsonArray transactionsStore = store.loadJsonFromFile().getAsJsonArray();
 			
 			final List<JsonElement> jsonElements = Lists.newArrayList(transactionsStore.iterator()).stream().collect(Collectors.toList()).stream().filter(txJson -> 
-				txJson.getAsJsonObject().get("date").getAsString().equals(date.format(DateTimeFormatter.ofPattern("dd-MM-yyyy")))).collect(Collectors.toList());	
+				txJson.getAsJsonObject().get("date").getAsString().equals(DateUtils.formatDate(date))).collect(Collectors.toList());	
 			
 			for (JsonElement jsonElement : jsonElements) {
 				final double amount = Double.valueOf(jsonElement.getAsJsonObject().get("amount").getAsString());
-				final LocalDate txDate =  LocalDate.parse(jsonElement.getAsJsonObject().get("date").getAsString(),DateTimeFormatter.ofPattern("dd-MM-yyyy"));
+				final LocalDate txDate =  DateUtils.parseDate(jsonElement.getAsJsonObject().get("date").getAsString());
 				final TransactionType txType = TransactionType.valueOf(jsonElement.getAsJsonObject().get("type").getAsString());
 				
 				transactions.add(Transaction.builder().amount(amount).date(txDate).type(txType).build());
@@ -163,6 +170,7 @@ public class TransactionInFileService implements TransactionService {
 	 * @return
 	 */
 	Pair<Transaction, JsonElement> find(final Transaction transaction, final List<JsonElement> jsonElements) {
+		
 		if (jsonElements.size() == 1 && checkTransactionAndJson(transaction, jsonElements.get(0))) {
 			return Pair.of(transaction, jsonElements.get(0));
 		} else if (jsonElements.size() == 0 || jsonElements.size() == 1 && !checkTransactionAndJson(transaction, jsonElements.get(0))) {
@@ -199,8 +207,7 @@ public class TransactionInFileService implements TransactionService {
 	boolean checkTransactionAndJson(final Transaction transaction, final JsonElement transactionJson) {
 		final String txType = transactionJson.getAsJsonObject().get("type").getAsString();
 		final String txDate = transactionJson.getAsJsonObject().get("date").getAsString();
-		return transaction.getDate().format(DateTimeFormatter.ofPattern("dd-MM-yyyy")).equals(txDate)
-				&& transaction.getType().toString().equals(txType);
+		return DateUtils.formatDate(transaction.getDate()).equals(txDate) && transaction.getType().toString().equals(txType);
 	}
 	
 }

@@ -17,6 +17,7 @@ import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 import com.fundrecs.assigment.domain.Transaction;
 import com.fundrecs.assigment.domain.TransactionType;
 import com.fundrecs.assigment.store.TransactionStore;
+import com.fundrecs.assigment.utils.DateUtils;
 import com.google.gson.Gson;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonParser;
@@ -66,8 +67,8 @@ class TransactionInFileServiceIntegrationTest {
 				+ "{\"amount\":\"10.0\",\"type\":\"CREDIT\",\"date\":\"13-01-2022\"},"
 				+ "{\"amount\":\"12.0\",\"type\":\"CREDIT\",\"date\":\"01-01-2021\"}]";
 		
-		transactionService.register(Arrays.asList(Transaction.builder().amount(10).date(LocalDate.now()).type(TransactionType.CREDIT).build()
-				,Transaction.builder().amount(12).date(LocalDate.parse("01-01-2021",DateTimeFormatter.ofPattern("dd-MM-yyyy"))).type(TransactionType.CREDIT).build()));
+		transactionService.register(Arrays.asList(Transaction.builder().amount(10).date(DateUtils.parseDate("13-01-2022")).type(TransactionType.CREDIT).build()
+				,Transaction.builder().amount(12).date(DateUtils.parseDate("01-01-2021")).type(TransactionType.CREDIT).build()));
 		
 		final Gson gson = new Gson();
 		assertEquals(expectedResult,gson.toJson(store.loadJsonFromFile()));
@@ -78,12 +79,14 @@ class TransactionInFileServiceIntegrationTest {
 
 		final String expectedResult = "["
 				+ "{\"date\":\"11-12-2011\",\"type\":\"DEBIT\",\"amount\":\"50\"},"
-				+ "{\"date\":\"11-12-2018\",\"type\":\"CREDIT\",\"amount\":\"9898.36\"},{\"date\":\"11-12-2019\",\"type\":\"CREDIT\",\"amount\":\"198.36\"},{\"amount\":\"10.0\",\"type\":\"CREDIT\",\"date\":\"13-01-2022\"}]";
+				+ "{\"date\":\"11-12-2018\",\"type\":\"CREDIT\",\"amount\":\"9898.36\"}"
+				+ ",{\"date\":\"11-12-2019\",\"type\":\"CREDIT\",\"amount\":\"198.36\"}"
+				+ ",{\"amount\":\"10.0\",\"type\":\"CREDIT\",\"date\":\"13-01-2022\"}]";
 
 		transactionService.register(Arrays.asList(
-				Transaction.builder().amount(10).date(LocalDate.now()).type(TransactionType.CREDIT).build(),
+				Transaction.builder().amount(10).date(DateUtils.parseDate("13-01-2022")).type(TransactionType.CREDIT).build(),
 				Transaction.builder().amount(100)
-						.date(LocalDate.parse("11-12-2019", DateTimeFormatter.ofPattern("dd-MM-yyyy")))
+						.date(DateUtils.parseDate("11-12-2019"))
 						.type(TransactionType.CREDIT).build()));
 		
 		final Gson gson = new Gson();
@@ -101,13 +104,13 @@ class TransactionInFileServiceIntegrationTest {
 				+ "{\"amount\":\"10.0\",\"type\":\"CREDIT\",\"date\":\"13-01-2022\"}]";
 		
 		transactionService.register(Arrays.asList(
-				Transaction.builder().amount(10).date(LocalDate.now()).type(TransactionType.CREDIT).build(),
+				Transaction.builder().amount(10).date(DateUtils.parseDate("13-01-2022")).type(TransactionType.CREDIT).build(),
 				
 				Transaction.builder().amount(10000)
-						.date(LocalDate.parse("11-12-2018", DateTimeFormatter.ofPattern("dd-MM-yyyy")))
+						.date(DateUtils.parseDate("11-12-2018"))
 						.type(TransactionType.CREDIT).build(),
 				Transaction.builder().amount(100)
-						.date(LocalDate.parse("11-12-2019", DateTimeFormatter.ofPattern("dd-MM-yyyy")))
+						.date(DateUtils.parseDate("11-12-2019"))
 						.type(TransactionType.CREDIT).build()));
 		
 		final Gson gson = new Gson();
@@ -121,7 +124,7 @@ class TransactionInFileServiceIntegrationTest {
 				.date(LocalDate.parse("11-12-2019", DateTimeFormatter.ofPattern("dd-MM-yyyy")))
 				.type(TransactionType.CREDIT).build();
 		
-		Optional<Transaction> actual = transactionService.getTransaction(LocalDate.parse("11-12-2019", DateTimeFormatter.ofPattern("dd-MM-yyyy")), TransactionType.CREDIT);
+		Optional<Transaction> actual = transactionService.getTransaction(DateUtils.parseDate("11-12-2019"), TransactionType.CREDIT);
 
 		assertEquals(expectedResult,actual.get());
 	}
